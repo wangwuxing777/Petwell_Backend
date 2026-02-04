@@ -2,14 +2,12 @@ package main
 
 import (
 	"database/sql"
-	"encoding/csv"
 	"encoding/json"
 	"fmt"
 	"io"
 	"net/http"
 	"os"
 	"path/filepath"
-	"strings"
 	"sync"
 	"time"
 
@@ -20,8 +18,21 @@ const (
 	port        = "8000"
 	jsonFile    = "vaccines.json"
 	clinicsFile = "clinics.csv"
-	insuranceDB = "insurance.db"
+	insuranceDB = "pet_insurance.db"
 )
+
+// --- Custom Types ---
+
+type NullJsonString struct {
+	sql.NullString
+}
+
+func (ns NullJsonString) MarshalJSON() ([]byte, error) {
+	if !ns.Valid {
+		return []byte("null"), nil
+	}
+	return json.Marshal(ns.String)
+}
 
 // --- Models ---
 
@@ -36,13 +47,12 @@ type BlogPost struct {
 	AuthorName   string    `json:"authorName"`
 	AuthorAvatar string    `json:"authorAvatar"`
 	Title        string    `json:"title"`
-	Content      string    `json:"content"`    // Added content field
-	ImageColor   string    `json:"imageColor"` // Hex or system name
+	Content      string    `json:"content"`
+	ImageColor   string    `json:"imageColor"`
 	Likes        int       `json:"likes"`
 	Timestamp    time.Time `json:"timestamp"`
 }
 
-// Clinic represents a veterinary clinic
 type Clinic struct {
 	ClinicID       string `json:"clinic_id"`
 	Name           string `json:"name"`
@@ -59,34 +69,70 @@ type Clinic struct {
 	Rating         string `json:"rating"`
 }
 
-// InsuranceProvider represents a pet insurance provider/product
-type InsuranceProvider struct {
-	ProviderKey       string  `json:"provider_key"`
-	InsuranceProvider string  `json:"insurance_provider"`
-	CompanyName       string  `json:"company_name"`
-	PlanName          string  `json:"plan_name"`
-	Category          string  `json:"category"`
-	Subcategory       string  `json:"subcategory"`
-	CoveragePercent   string  `json:"coverage_percentage"`
-	CancerCashHKD     float64 `json:"cancer_cash_hkd,omitempty"`
-	CancerCashNotes   string  `json:"cancer_cash_notes,omitempty"`
-	AdditionalBenefit float64 `json:"additional_critical_cash_benefit,omitempty"`
-	CoverageMode      string  `json:"coverage_mode"`
+// --- New Insurance Models (pet_insurance.db) ---
+
+type InsuranceCompany struct {
+	CompanyId     int            `json:"company_id"`
+	CompanyName   string         `json:"company_name"`
+	CompanyNameZh NullJsonString `json:"company_name_zh,omitempty"`
+	CompanyLogo   NullJsonString `json:"company_logo,omitempty"`
 }
 
-// CoverageLimit represents a coverage limit entry
+type InsuranceProduct struct {
+	InsuranceId       int            `json:"insurance_id"`
+	ProviderId        int            `json:"provider_id"`
+	InsuranceName     string         `json:"insurance_name"`
+	InsuranceNameZh   NullJsonString `json:"insurance_name_zh,omitempty"`
+	Remark            NullJsonString `json:"remark,omitempty"`
+	RemarkZh          NullJsonString `json:"remark_zh,omitempty"`
+	MinAge            NullJsonString `json:"min_age,omitempty"`
+	MinAgeZh          NullJsonString `json:"min_age_zh,omitempty"`
+	MaxAge            NullJsonString `json:"max_age,omitempty"`
+	MaxAgeZh          NullJsonString `json:"max_age_zh,omitempty"`
+	Coinsurance       NullJsonString `json:"coinsurance,omitempty"`
+	CoinsuranceZh     NullJsonString `json:"coinsurance_zh,omitempty"`
+	SuitablePetType   NullJsonString `json:"suitable_pet_type,omitempty"`
+	SuitablePetTypeZh NullJsonString `json:"suitable_pet_type_zh,omitempty"`
+	CatBreedType      NullJsonString `json:"cat_breed_type,omitempty"`
+	CatBreedTypeZh    NullJsonString `json:"cat_breed_type_zh,omitempty"`
+	DogBreedType      NullJsonString `json:"dog_breed_type,omitempty"`
+	DogBreedTypeZh    NullJsonString `json:"dog_breed_type_zh,omitempty"`
+	BreedTypeRemark   NullJsonString `json:"breed_type_remark,omitempty"`
+	BreedTypeRemarkZh NullJsonString `json:"breed_type_remark_zh,omitempty"`
+	PaymentMode       NullJsonString `json:"payment_mode,omitempty"`
+	PaymentModeZh     NullJsonString `json:"payment_mode_zh,omitempty"`
+	WaitingPeriod     NullJsonString `json:"waiting_period,omitempty"`
+	WaitingPeriodZh   NullJsonString `json:"waiting_period_zh,omitempty"`
+	InformationLink   NullJsonString `json:"information_link,omitempty"`
+	InformationLinkZh NullJsonString `json:"information_link_zh,omitempty"`
+	UpdateTime        NullJsonString `json:"update_time,omitempty"`
+}
+
+type CoverageItem struct {
+	CoverageId     int            `json:"coverage_id"`
+	CoverageType   string         `json:"coverage_type"`
+	CoverageTypeZh NullJsonString `json:"coverage_type_zh,omitempty"`
+}
+
 type CoverageLimit struct {
-	ID                int    `json:"id"`
-	LimitItem         string `json:"limit_item"`
-	ProviderKey       string `json:"provider_key"`
-	Level             string `json:"level"`
-	Category          string `json:"category"`
-	Subcategory       string `json:"subcategory"`
-	CoverageAmountHKD string `json:"coverage_amount_hkd"`
-	Notes             string `json:"notes"`
+	CoverageId    int            `json:"coverage_id"`
+	ProductId     int            `json:"product_id"`
+	CoverageLimit NullJsonString `json:"coverage_limit,omitempty"`
+	Remark        NullJsonString `json:"remark,omitempty"`
+	RemarkZh      NullJsonString `json:"remark_zh,omitempty"`
 }
 
-// ServiceSubcategory represents a service type
+type SubCoverageLimit struct {
+	SubCoverageId       int            `json:"sub_coverage_id"`
+	ParentCoverageId    int            `json:"parent_coverage_id"`
+	ProductId           int            `json:"product_id"`
+	SubCoverageName     NullJsonString `json:"sub_coverage_name,omitempty"`
+	SubCoverageNameZh   NullJsonString `json:"sub_coverage_name_zh,omitempty"`
+	SubLimit            NullJsonString `json:"sub_limit,omitempty"`
+	SubCoverageRemark   NullJsonString `json:"sub_coverage_remark,omitempty"`
+	SubCoverageRemarkZh NullJsonString `json:"sub_coverage_remark_zh,omitempty"`
+}
+
 type ServiceSubcategory struct {
 	ID           int    `json:"id"`
 	Name         string `json:"name"`
@@ -102,7 +148,7 @@ var (
 	usersMutex sync.RWMutex
 )
 
-// --- Handlers ---
+// --- Helpers ---
 
 func enableCors(w *http.ResponseWriter) {
 	(*w).Header().Set("Access-Control-Allow-Origin", "*")
@@ -110,26 +156,40 @@ func enableCors(w *http.ResponseWriter) {
 	(*w).Header().Set("Access-Control-Allow-Headers", "Content-Type")
 }
 
+func openInsuranceDB() (*sql.DB, error) {
+	if _, err := os.Stat(insuranceDB); err == nil {
+		return sql.Open("sqlite3", insuranceDB)
+	}
+
+	ex, err := os.Executable()
+	if err == nil {
+		path := filepath.Join(filepath.Dir(ex), insuranceDB)
+		if _, err := os.Stat(path); err == nil {
+			return sql.Open("sqlite3", path)
+		}
+	}
+
+	return sql.Open("sqlite3", insuranceDB)
+}
+
+// --- Handlers ---
+
 func vaccinesHandler(w http.ResponseWriter, r *http.Request) {
 	enableCors(&w)
 	if r.Method == http.MethodOptions {
 		return
 	}
-
 	if r.Method != http.MethodGet {
 		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
 		return
 	}
 
-	// Get the directory of the executable to find the json file reliably
 	ex, err := os.Executable()
 	if err != nil {
 		http.Error(w, "Server Error", http.StatusInternalServerError)
 		return
 	}
 	exPath := filepath.Dir(ex)
-
-	// Try to open local file first
 	file, err := os.Open(jsonFile)
 	if err != nil {
 		file, err = os.Open(filepath.Join(exPath, jsonFile))
@@ -139,9 +199,20 @@ func vaccinesHandler(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 	defer file.Close()
-
 	w.Header().Set("Content-Type", "application/json")
 	io.Copy(w, file)
+}
+
+func clinicsHandler(w http.ResponseWriter, r *http.Request) {
+	enableCors(&w)
+	w.Header().Set("Content-Type", "application/json")
+	w.Write([]byte("[]"))
+}
+
+func emergencyClinicsHandler(w http.ResponseWriter, r *http.Request) {
+	enableCors(&w)
+	w.Header().Set("Content-Type", "application/json")
+	w.Write([]byte("[]"))
 }
 
 func registerHandler(w http.ResponseWriter, r *http.Request) {
@@ -149,30 +220,20 @@ func registerHandler(w http.ResponseWriter, r *http.Request) {
 	if r.Method == http.MethodOptions {
 		return
 	}
-
 	if r.Method != http.MethodPost {
 		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
 		return
 	}
-
 	var user User
 	if err := json.NewDecoder(r.Body).Decode(&user); err != nil {
 		http.Error(w, "Invalid request body", http.StatusBadRequest)
 		return
 	}
-
-	if user.ID == "" || user.Name == "" {
-		http.Error(w, "ID and Name are required", http.StatusBadRequest)
-		return
-	}
-
 	usersMutex.Lock()
 	users[user.ID] = user
 	usersMutex.Unlock()
-
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(user)
-	fmt.Printf("Registered user: %+v\n", user)
 }
 
 func postsHandler(w http.ResponseWriter, r *http.Request) {
@@ -180,222 +241,128 @@ func postsHandler(w http.ResponseWriter, r *http.Request) {
 	if r.Method == http.MethodOptions {
 		return
 	}
-
 	if r.Method == http.MethodGet {
 		postsMutex.RLock()
 		defer postsMutex.RUnlock()
-
 		w.Header().Set("Content-Type", "application/json")
 		json.NewEncoder(w).Encode(posts)
 		return
 	}
-
 	if r.Method == http.MethodPost {
 		var post BlogPost
 		if err := json.NewDecoder(r.Body).Decode(&post); err != nil {
 			http.Error(w, "Invalid request body", http.StatusBadRequest)
 			return
 		}
-
-		// Set defaults
-		post.ID = fmt.Sprintf("%d", time.Now().UnixNano())
-		post.Timestamp = time.Now()
-		if post.ImageColor == "" {
-			post.ImageColor = "blue"
-		}
-
 		postsMutex.Lock()
-		// Prepend to keep newest first
-		posts = append([]BlogPost{post}, posts...)
+		posts = append(posts, post)
 		postsMutex.Unlock()
-
-		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusCreated)
 		json.NewEncoder(w).Encode(post)
-		fmt.Printf("New post created: %s by %s\n", post.Title, post.AuthorName)
-		return
 	}
-
-	http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
 }
 
-// loadClinicsFromCSV reads the clinics.csv file and returns a slice of Clinic
-func loadClinicsFromCSV() ([]Clinic, error) {
-	file, err := os.Open(clinicsFile)
-	if err != nil {
-		ex, _ := os.Executable()
-		exPath := filepath.Dir(ex)
-		file, err = os.Open(filepath.Join(exPath, clinicsFile))
-		if err != nil {
-			return nil, err
-		}
-	}
-	defer file.Close()
+// --- New Insurance Handlers ---
 
-	reader := csv.NewReader(file)
-	// Read header
-	_, err = reader.Read()
-	if err != nil {
-		return nil, err
-	}
-
-	records, err := reader.ReadAll()
-	if err != nil {
-		return nil, err
-	}
-
-	var clinics []Clinic
-	for _, row := range records {
-		if len(row) < 13 {
-			continue
-		}
-		clinics = append(clinics, Clinic{
-			ClinicID:       row[0],
-			Name:           row[1],
-			Address:        row[2],
-			PhoneRegular:   row[3],
-			PhoneEmergency: row[4],
-			Whatsapp:       row[5],
-			OpeningHours:   row[6],
-			Emergency24h:   row[7],
-			WebsiteURL:     row[8],
-			ApplemapURL:    row[9],
-			Latitude:       row[10],
-			Longitude:      row[11],
-			Rating:         row[12],
-		})
-	}
-	return clinics, nil
-}
-
-func clinicsHandler(w http.ResponseWriter, r *http.Request) {
+func insuranceCompaniesHandler(w http.ResponseWriter, r *http.Request) {
 	enableCors(&w)
 	if r.Method == http.MethodOptions {
-		return
-	}
-
-	if r.Method != http.MethodGet {
-		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
-		return
-	}
-
-	clinics, err := loadClinicsFromCSV()
-	if err != nil {
-		fmt.Printf("Error reading clinics CSV: %v\n", err)
-		w.Header().Set("Content-Type", "application/json")
-		w.Write([]byte("[]"))
-		return
-	}
-
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(clinics)
-}
-
-func emergencyClinicsHandler(w http.ResponseWriter, r *http.Request) {
-	enableCors(&w)
-	if r.Method == http.MethodOptions {
-		return
-	}
-
-	if r.Method != http.MethodGet {
-		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
-		return
-	}
-
-	allClinics, err := loadClinicsFromCSV()
-	if err != nil {
-		fmt.Printf("Error reading clinics CSV: %v\n", err)
-		w.Header().Set("Content-Type", "application/json")
-		w.Write([]byte("[]"))
-		return
-	}
-
-	var emergencyClinics []Clinic
-	for _, c := range allClinics {
-		if strings.ToUpper(strings.TrimSpace(c.Emergency24h)) == "TRUE" {
-			emergencyClinics = append(emergencyClinics, c)
-		}
-	}
-
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(emergencyClinics)
-}
-
-// --- Insurance API Handlers ---
-
-func openInsuranceDB() (*sql.DB, error) {
-	// Try to open local file first
-	db, err := sql.Open("sqlite3", insuranceDB)
-	if err != nil {
-		ex, _ := os.Executable()
-		exPath := filepath.Dir(ex)
-		db, err = sql.Open("sqlite3", filepath.Join(exPath, insuranceDB))
-		if err != nil {
-			return nil, err
-		}
-	}
-	return db, nil
-}
-
-func insuranceProvidersHandler(w http.ResponseWriter, r *http.Request) {
-	enableCors(&w)
-	if r.Method == http.MethodOptions {
-		return
-	}
-
-	if r.Method != http.MethodGet {
-		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
 		return
 	}
 
 	db, err := openInsuranceDB()
 	if err != nil {
-		fmt.Printf("Error opening insurance DB: %v\n", err)
-		w.Header().Set("Content-Type", "application/json")
-		w.Write([]byte("[]"))
+		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
 	defer db.Close()
 
-	rows, err := db.Query(`SELECT provider_key, insurance_provider, company_name, plan_name, 
-		category, subcategory, coverage_percentage, cancer_cash_hkd, cancer_cash_notes, 
-		additional_critical_cash_benefit, coverage_mode 
-		FROM pet_insurance_comparison ORDER BY provider_key`)
+	rows, err := db.Query("SELECT company_id, company_name, company_name_zh, company_logo FROM insurance_provider")
 	if err != nil {
-		fmt.Printf("Error querying insurance providers: %v\n", err)
-		w.Header().Set("Content-Type", "application/json")
-		w.Write([]byte("[]"))
+		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
 	defer rows.Close()
 
-	var providers []InsuranceProvider
+	var companies []InsuranceCompany
 	for rows.Next() {
-		var p InsuranceProvider
-		var cancerCash, additionalBenefit sql.NullFloat64
-		var cancerNotes, coverageMode sql.NullString
-		err := rows.Scan(&p.ProviderKey, &p.InsuranceProvider, &p.CompanyName, &p.PlanName,
-			&p.Category, &p.Subcategory, &p.CoveragePercent, &cancerCash, &cancerNotes,
-			&additionalBenefit, &coverageMode)
-		if err != nil {
-			continue
+		var c InsuranceCompany
+		if err := rows.Scan(&c.CompanyId, &c.CompanyName, &c.CompanyNameZh, &c.CompanyLogo); err == nil {
+			companies = append(companies, c)
 		}
-		if cancerCash.Valid {
-			p.CancerCashHKD = cancerCash.Float64
-		}
-		if cancerNotes.Valid {
-			p.CancerCashNotes = cancerNotes.String
-		}
-		if additionalBenefit.Valid {
-			p.AdditionalBenefit = additionalBenefit.Float64
-		}
-		if coverageMode.Valid {
-			p.CoverageMode = coverageMode.String
-		}
-		providers = append(providers, p)
 	}
 
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(providers)
+	json.NewEncoder(w).Encode(companies)
+}
+
+func insuranceProductsHandler(w http.ResponseWriter, r *http.Request) {
+	enableCors(&w)
+	if r.Method == http.MethodOptions {
+		return
+	}
+
+	db, err := openInsuranceDB()
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	defer db.Close()
+
+	rows, err := db.Query(`SELECT insurance_id, provider_id, insurance_name, insurance_name_zh, remark, remark_zh, 
+		min_age, min_age_zh, max_age, max_age_zh, coinsurance, coinsurance_zh, suitable_pet_type, suitable_pet_type_zh,
+		cat_breed_type, cat_breed_type_zh, dog_breed_type, dog_breed_type_zh, breed_type_remark, breed_type_remark_zh,
+		payment_mode, payment_mode_zh, waiting_period, waiting_period_zh, information_link, information_link_zh, update_time
+		FROM product`)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	defer rows.Close()
+
+	var products []InsuranceProduct
+	for rows.Next() {
+		var p InsuranceProduct
+		if err := rows.Scan(&p.InsuranceId, &p.ProviderId, &p.InsuranceName, &p.InsuranceNameZh, &p.Remark, &p.RemarkZh,
+			&p.MinAge, &p.MinAgeZh, &p.MaxAge, &p.MaxAgeZh, &p.Coinsurance, &p.CoinsuranceZh, &p.SuitablePetType, &p.SuitablePetTypeZh,
+			&p.CatBreedType, &p.CatBreedTypeZh, &p.DogBreedType, &p.DogBreedTypeZh, &p.BreedTypeRemark, &p.BreedTypeRemarkZh,
+			&p.PaymentMode, &p.PaymentModeZh, &p.WaitingPeriod, &p.WaitingPeriodZh, &p.InformationLink, &p.InformationLinkZh, &p.UpdateTime); err == nil {
+			products = append(products, p)
+		}
+	}
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(products)
+}
+
+func coverageListHandler(w http.ResponseWriter, r *http.Request) {
+	enableCors(&w)
+	if r.Method == http.MethodOptions {
+		return
+	}
+
+	db, err := openInsuranceDB()
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	defer db.Close()
+
+	rows, err := db.Query("SELECT coverage_id, coverage_type, coverage_type_zh FROM coverage_list")
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	defer rows.Close()
+
+	var list []CoverageItem
+	for rows.Next() {
+		var item CoverageItem
+		if err := rows.Scan(&item.CoverageId, &item.CoverageType, &item.CoverageTypeZh); err == nil {
+			list = append(list, item)
+		}
+	}
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(list)
 }
 
 func coverageLimitsHandler(w http.ResponseWriter, r *http.Request) {
@@ -404,112 +371,77 @@ func coverageLimitsHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if r.Method != http.MethodGet {
-		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
-		return
-	}
-
 	db, err := openInsuranceDB()
 	if err != nil {
-		fmt.Printf("Error opening insurance DB: %v\n", err)
-		w.Header().Set("Content-Type", "application/json")
-		w.Write([]byte("[]"))
+		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
 	defer db.Close()
 
-	// Check for query params (e.g., ?provider_key=5&level=Category)
-	providerKey := r.URL.Query().Get("provider_key")
-	level := r.URL.Query().Get("level")
-
-	query := `SELECT id, limit_item, provider_key, level, category, subcategory, coverage_amount_hkd, notes 
-		FROM coverage_limits WHERE 1=1`
-	var args []interface{}
-
-	if providerKey != "" {
-		query += " AND provider_key = ?"
-		args = append(args, providerKey)
-	}
-	if level != "" {
-		query += " AND level = ?"
-		args = append(args, level)
-	}
-	query += " ORDER BY provider_key, level, subcategory"
-
-	rows, err := db.Query(query, args...)
+	rows, err := db.Query("SELECT coverage_id, product_id, coverage_limit, remark, remark_zh FROM coverage_limit")
 	if err != nil {
-		fmt.Printf("Error querying coverage limits: %v\n", err)
-		w.Header().Set("Content-Type", "application/json")
-		w.Write([]byte("[]"))
+		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
 	defer rows.Close()
 
 	var limits []CoverageLimit
 	for rows.Next() {
-		var cl CoverageLimit
-		var notes sql.NullString
-		err := rows.Scan(&cl.ID, &cl.LimitItem, &cl.ProviderKey, &cl.Level,
-			&cl.Category, &cl.Subcategory, &cl.CoverageAmountHKD, &notes)
-		if err != nil {
-			continue
+		var l CoverageLimit
+		if err := rows.Scan(&l.CoverageId, &l.ProductId, &l.CoverageLimit, &l.Remark, &l.RemarkZh); err == nil {
+			limits = append(limits, l)
 		}
-		if notes.Valid {
-			cl.Notes = notes.String
-		}
-		limits = append(limits, cl)
 	}
-
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(limits)
 }
 
-func serviceSubcategoriesHandler(w http.ResponseWriter, r *http.Request) {
+func subCoverageLimitsHandler(w http.ResponseWriter, r *http.Request) {
 	enableCors(&w)
 	if r.Method == http.MethodOptions {
 		return
 	}
 
-	if r.Method != http.MethodGet {
-		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
-		return
-	}
-
 	db, err := openInsuranceDB()
 	if err != nil {
-		fmt.Printf("Error opening insurance DB: %v\n", err)
-		w.Header().Set("Content-Type", "application/json")
-		w.Write([]byte("[]"))
+		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
 	defer db.Close()
 
-	rows, err := db.Query(`SELECT id, name, display_order 
-		FROM service_subcategories ORDER BY display_order`)
+	rows, err := db.Query(`SELECT sub_coverage_id, parent_coverage_id, product_id, sub_coverage_name, sub_coverage_name_zh, 
+		sub_limit, sub_coverage_remark, sub_coverage_remark_zh FROM sub_coverage_limit`)
 	if err != nil {
-		fmt.Printf("Error querying service subcategories: %v\n", err)
-		w.Header().Set("Content-Type", "application/json")
-		w.Write([]byte("[]"))
+		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
 	defer rows.Close()
 
-	var subcategories []ServiceSubcategory
+	var limits []SubCoverageLimit
 	for rows.Next() {
-		var s ServiceSubcategory
-		err := rows.Scan(&s.ID, &s.Name, &s.DisplayOrder)
-		if err != nil {
-			continue
+		var l SubCoverageLimit
+		if err := rows.Scan(&l.SubCoverageId, &l.ParentCoverageId, &l.ProductId, &l.SubCoverageName, &l.SubCoverageNameZh,
+			&l.SubLimit, &l.SubCoverageRemark, &l.SubCoverageRemarkZh); err == nil {
+			limits = append(limits, l)
 		}
-		subcategories = append(subcategories, s)
 	}
-
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(subcategories)
+	json.NewEncoder(w).Encode(limits)
+}
+
+// Legacy Handlers - Return empty
+func insuranceProvidersHandler(w http.ResponseWriter, r *http.Request) {
+	enableCors(&w)
+	w.Header().Set("Content-Type", "application/json")
+	w.Write([]byte("[]"))
+}
+func serviceSubcategoriesHandler(w http.ResponseWriter, r *http.Request) {
+	enableCors(&w)
+	w.Header().Set("Content-Type", "application/json")
+	w.Write([]byte("[]"))
 }
 
 func main() {
-	// Initialize some mock data
 	posts = []BlogPost{
 		{ID: "1", AuthorName: "System", Title: "Welcome to PetWell Blog", Content: "This is the start of our community.", Likes: 10, ImageColor: "green", Timestamp: time.Now()},
 	}
@@ -520,13 +452,16 @@ func main() {
 	http.HandleFunc("/clinics", clinicsHandler)
 	http.HandleFunc("/emergency-clinics", emergencyClinicsHandler)
 
-	// Insurance API endpoints
-	http.HandleFunc("/insurance-providers", insuranceProvidersHandler)
+	http.HandleFunc("/insurance-companies", insuranceCompaniesHandler)
+	http.HandleFunc("/insurance-products", insuranceProductsHandler)
+	http.HandleFunc("/coverage-list", coverageListHandler)
 	http.HandleFunc("/coverage-limits", coverageLimitsHandler)
+	http.HandleFunc("/sub-coverage-limits", subCoverageLimitsHandler)
+
+	http.HandleFunc("/insurance-providers", insuranceProvidersHandler)
 	http.HandleFunc("/service-subcategories", serviceSubcategoriesHandler)
 
 	fmt.Printf("PetWell Backend running at http://localhost:%s\n", port)
-	fmt.Println("Endpoints: /vaccines, /clinics, /emergency-clinics, /posts, /register, /insurance-providers, /coverage-limits, /service-subcategories")
 	err := http.ListenAndServe(":"+port, nil)
 	if err != nil {
 		fmt.Printf("Server failed to start: %v\n", err)
