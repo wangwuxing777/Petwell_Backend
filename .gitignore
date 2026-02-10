@@ -1,0 +1,28 @@
+# Binaries
+Petwell_Backend
+petwell_server
+*.exe
+
+# Database files
+*.db
+*.sqbpro
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# IDE / Agent folders
+.idea/
+.vscode/
+.agent/
+
+# Environment
+.env
+
+# Temporary / debug files
+openapi_output.json
+
+# Planning artifacts in root (kept in .gemini)
+task_plan.md
+findings.md
+progress.md
