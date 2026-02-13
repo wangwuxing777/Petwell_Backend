@@ -8,6 +8,7 @@ import (
 
 type Config struct {
 	RAGServiceURL string
+	MapsAPIKey    string
 }
 
 func LoadConfig() *Config {
@@ -18,7 +19,10 @@ func LoadConfig() *Config {
 		ragURL = "http://localhost:8001"
 	}
 
+	mapsKey := os.Getenv("MAPS_API_KEY")
+
 	return &Config{
 		RAGServiceURL: ragURL,
+		MapsAPIKey:    mapsKey,
 	}
 }

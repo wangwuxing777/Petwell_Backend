@@ -6,6 +6,7 @@ import (
 
 	"github.com/vf0429/Petwell_Backend/internal/config"
 	"github.com/vf0429/Petwell_Backend/internal/handlers"
+	"github.com/vf0429/Petwell_Backend/internal/services/places"
 	"github.com/vf0429/Petwell_Backend/internal/services/rag"
 )
 
@@ -36,6 +37,10 @@ func main() {
 
 	// RAG chat handler
 	http.HandleFunc("/api/chat", handlers.NewRAGHandler(ragClient))
+
+	// Vets handler
+	placesClient := places.NewClient(cfg.MapsAPIKey)
+	http.HandleFunc("/api/vets", handlers.NewVetsHandler(placesClient))
 
 	fmt.Printf("PetWell Backend running at http://localhost:%s\n", port)
 	err := http.ListenAndServe(":"+port, nil)
