@@ -10,6 +10,7 @@ import (
 	"path/filepath"
 	"strings"
 	"sync"
+
 	// "time" // Removed unused
 
 	"github.com/vf0429/Petwell_Backend/internal/config"
@@ -41,11 +42,11 @@ func (s *ClinicsService) loadClinics(cfg *config.Config) {
 	defer s.mu.Unlock()
 
 	// Adjust path if running from root
-	path := filepath.Join("data", "clinics.csv")
+	path := filepath.Join("assets", "clinics.csv")
 	f, err := os.Open(path)
 	if err != nil {
 		// Try looking in ../data if running from cmd/...
-		path = filepath.Join("..", "data", "clinics.csv")
+		path = filepath.Join("..", "assets", "clinics.csv")
 		f, err = os.Open(path)
 		if err != nil {
 			fmt.Printf("Error opening clinics.csv: %v\n", err)
@@ -97,7 +98,7 @@ func (s *ClinicsService) loadClinics(cfg *config.Config) {
 			Longitude:      record[11],
 			Rating:         record[12],
 		}
-		
+
 		if len(record) > 13 {
 			c.GooglePlaceID = record[13]
 		}
@@ -128,15 +129,15 @@ func (s *ClinicsService) loadClinics(cfg *config.Config) {
 			// Create a rate limiter channel, e.g., 5 concurrent requests
 			sem := make(chan struct{}, 5)
 			var wg sync.WaitGroup
-			
+
 			for i := 0; i < count; i++ {
 				// Acquire semaphore
 				wg.Add(1)
 				sem <- struct{}{}
-				
+
 				go func(idx int) {
 					defer func() { <-sem; wg.Done() }()
-					
+
 					// Read clinic safely (need read lock for name/address, but since these are strings and immutable, maybe OK without lock if no one writes?)
 					// Actually we are the only writer.
 					// Readers might read while we read. RLock needed.
@@ -186,7 +187,7 @@ func (s *ClinicsService) loadClinics(cfg *config.Config) {
 					if placeID == "" {
 						return
 					}
-						
+
 					// Now get full details
 					details, err := mapsClient.PlaceDetails(context.Background(), &maps.PlaceDetailsRequest{
 						PlaceID: placeID,
@@ -209,11 +210,11 @@ func (s *ClinicsService) loadClinics(cfg *config.Config) {
 						target.Latitude = fmt.Sprintf("%f", details.Geometry.Location.Lat)
 						target.Longitude = fmt.Sprintf("%f", details.Geometry.Location.Lng)
 					}
-					
+
 					if details.Rating != 0 {
 						target.Rating = fmt.Sprintf("%.1f", details.Rating)
 					}
-					
+
 					if details.InternationalPhoneNumber != "" {
 						target.PhoneRegular = details.InternationalPhoneNumber
 					}
@@ -257,12 +258,12 @@ func (s *ClinicsService) loadClinics(cfg *config.Config) {
 							target.PhotoURL = fmt.Sprintf("https://maps.googleapis.com/maps/api/place/photo?maxwidth=800&photo_reference=%s&key=%s", ref, cfg.MapsAPIKey)
 						}
 					}
-					
+
 					s.mu.Unlock()
 					fmt.Printf("Enriched: %s (Rating: %.1f)\n", cl.Name, details.Rating)
 				}(i)
 			}
-			
+
 			wg.Wait()
 			s.saveClinics()
 		}()
@@ -277,10 +278,10 @@ func (s *ClinicsService) saveClinics() {
 	defer s.mu.Unlock()
 
 	// Adjust path if running from root
-	path := filepath.Join("data", "clinics.csv")
+	path := filepath.Join("assets", "clinics.csv")
 	// If running inside cmd/server, adjust
 	if _, err := os.Stat(path); os.IsNotExist(err) {
-		path = filepath.Join("..", "data", "clinics.csv")
+		path = filepath.Join("..", "assets", "clinics.csv")
 	}
 
 	f, err := os.Create(path)
@@ -329,16 +330,15 @@ func (s *ClinicsService) saveClinics() {
 	fmt.Printf("Saved updated clinics data to %s\n", path)
 }
 
-
 func NewClinicsHandler(cfg *config.Config) http.HandlerFunc {
 	svc := getClinicsService(cfg)
 	return func(w http.ResponseWriter, r *http.Request) {
 		EnableCors(&w)
 		w.Header().Set("Content-Type", "application/json")
-		
+
 		svc.mu.RLock()
 		defer svc.mu.RUnlock()
-		
+
 		if err := json.NewEncoder(w).Encode(svc.clinics); err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 		}

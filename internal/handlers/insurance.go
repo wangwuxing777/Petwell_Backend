@@ -12,7 +12,7 @@ import (
 	_ "github.com/mattn/go-sqlite3"
 )
 
-const insuranceDBPath = "database/pet_insurance.db"
+const insuranceDBPath = "assets/pet_insurance.db"
 
 func OpenInsuranceDB() (*sql.DB, error) {
 	if _, err := os.Stat(insuranceDBPath); err == nil {

@@ -7,7 +7,7 @@ import (
 	"path/filepath"
 )
 
-const jsonFile = "data/vaccines.json"
+const jsonFile = "assets/vaccines.json"
 
 func VaccinesHandler(w http.ResponseWriter, r *http.Request) {
 	EnableCors(&w)

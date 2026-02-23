@@ -54,22 +54,22 @@ func main() {
 	}
 
 	// 3. Load Existing CSV to avoid duplicates
-	csvPath := "data/clinics.csv"
+	csvPath := "assets/clinics.csv"
 	// Adjust path if running from root vs cmd folder
 	if _, err := os.Stat(csvPath); os.IsNotExist(err) {
-		csvPath = "../../data/clinics.csv"
+		csvPath = "../../assets/clinics.csv"
 	}
-	
+
 	existingClinics, maxID := loadExistingClinics(csvPath)
 	fmt.Printf("Loaded %d existing clinics. Max ID: %d\n", len(existingClinics), maxID)
 
 	// 4. Search for Veterinary Clinics in Hong Kong
 	// We will try a few keywords to get good coverage
 	keywords := []string{"Veterinary Clinic Hong Kong", "Animal Hospital Hong Kong", "Vet Hong Kong"}
-	
+
 	var newClinics []Clinic
 	uniquePlaceIDs := make(map[string]bool)
-	
+
 	// Mark existing Place IDs as visited
 	for _, row := range existingClinics {
 		if len(row) > 13 && row[13] != "" {
@@ -79,9 +79,9 @@ func main() {
 
 	for _, keyword := range keywords {
 		fmt.Printf("Searching for: %s...\n", keyword)
-		
+
 		var nextPageToken string
-		
+
 		// Pagination loop
 		for {
 			var searchReq *maps.TextSearchRequest
@@ -101,9 +101,9 @@ func main() {
 			resp, err := c.TextSearch(context.Background(), searchReq)
 			if err != nil {
 				log.Printf("Error searching: %s. PageToken: %s", err, nextPageToken)
-				break 
+				break
 			}
-			
+
 			// If no results, stop
 			if len(resp.Results) == 0 {
 				break
@@ -115,23 +115,23 @@ func main() {
 					continue
 				}
 				uniquePlaceIDs[result.PlaceID] = true
-				
+
 				// Fetch details
 				details, err := c.PlaceDetails(context.Background(), &maps.PlaceDetailsRequest{
 					PlaceID: result.PlaceID,
 				})
-				
+
 				if err != nil {
 					fmt.Printf("Error fetching details for %s: %v\n", result.Name, err)
 					continue
 				}
 
 				maxID++
-				
+
 				// Safe extraction
 				lat := details.Geometry.Location.Lat
 				lng := details.Geometry.Location.Lng
-				
+
 				openingHoursStr := ""
 				is24h := "FALSE"
 				if details.OpeningHours != nil && len(details.OpeningHours.WeekdayText) > 0 {
@@ -168,7 +168,7 @@ func main() {
 				newClinics = append(newClinics, newClinic)
 				fmt.Printf("Found: %s\n", newClinic.Name)
 			}
-			
+
 			nextPageToken = resp.NextPageToken
 			if nextPageToken == "" {
 				break
@@ -200,7 +200,9 @@ func loadExistingClinics(path string) ([][]string, int) {
 
 	maxID := 0
 	for i, row := range records {
-		if i == 0 || len(row) == 0 { continue }
+		if i == 0 || len(row) == 0 {
+			continue
+		}
 		if id, err := strconv.Atoi(row[0]); err == nil && id > maxID {
 			maxID = id
 		}
