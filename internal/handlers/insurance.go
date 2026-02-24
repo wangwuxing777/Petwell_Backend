@@ -79,7 +79,7 @@ func InsuranceProductsHandler(w http.ResponseWriter, r *http.Request) {
 		min_age, min_age_zh, max_age, max_age_zh, coinsurance, coinsurance_zh, suitable_pet_type, suitable_pet_type_zh,
 		cat_breed_type, cat_breed_type_zh, dog_breed_type, dog_breed_type_zh, breed_type_remark, breed_type_remark_zh,
 		payment_mode, payment_mode_zh, waiting_period, waiting_period_zh, information_link, information_link_zh, update_time,
-		tag, tag_zh
+		NULL as tag, NULL as tag_zh
 		FROM product`)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
