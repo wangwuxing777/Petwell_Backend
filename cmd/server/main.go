@@ -1,12 +1,15 @@
 package main
 
 import (
+	"flag"
 	"fmt"
+	"log"
 	"net/http"
 	"time"
 
 	"github.com/vf0429/Petwell_Backend/internal/config"
 	"github.com/vf0429/Petwell_Backend/internal/handlers"
+	"github.com/vf0429/Petwell_Backend/internal/models"
 	"github.com/vf0429/Petwell_Backend/internal/services/chat"
 	"github.com/vf0429/Petwell_Backend/internal/services/places"
 	"github.com/vf0429/Petwell_Backend/internal/services/rag"
@@ -22,36 +25,64 @@ func main() {
 	// Initialize chat session store (30-minute TTL)
 	sessionStore := chat.NewSessionStore(30 * time.Minute)
 
+	// Parse flags for seeding DB
+	seedDB := flag.Bool("seed", false, "Seed the database with initial scenario data")
+	flag.Parse()
+
+	// Initialize DB
+	db, err := models.InitDB(cfg)
+	if err != nil {
+		log.Fatalf("Fatal error initializing simple db: %v", err)
+	}
+
+	if *seedDB {
+		SeedDatabase(db)
+		fmt.Println("Seeding complete. Exiting...")
+		return
+	}
+
+	// Initialize new Gin router for scenarios API
+	insuranceV1Router := handlers.NewInsuranceV1Handler(db)
+
+	// Create a new mux
+	mux := http.NewServeMux()
+
 	// Core handlers
-	http.HandleFunc("/vaccines", handlers.VaccinesHandler)
-	http.HandleFunc("/register", handlers.RegisterHandler)
-	http.HandleFunc("/posts", handlers.PostsHandler)
-	http.HandleFunc("/clinics", handlers.NewClinicsHandler(cfg))
-	http.HandleFunc("/emergency-clinics", handlers.NewEmergencyClinicsHandler(cfg))
+	mux.HandleFunc("/vaccines", handlers.VaccinesHandler)
+	mux.HandleFunc("/register", handlers.RegisterHandler)
+	mux.HandleFunc("/posts", handlers.PostsHandler)
+	mux.HandleFunc("/clinics", handlers.NewClinicsHandler(cfg))
+	mux.HandleFunc("/emergency-clinics", handlers.NewEmergencyClinicsHandler(cfg))
 
 	// Insurance handlers
-	http.HandleFunc("/insurance-companies", handlers.InsuranceCompaniesHandler)
-	http.HandleFunc("/insurance-products", handlers.InsuranceProductsHandler)
-	http.HandleFunc("/coverage-list", handlers.CoverageListHandler)
-	http.HandleFunc("/coverage-limits", handlers.CoverageLimitsHandler)
-	http.HandleFunc("/sub-coverage-limits", handlers.SubCoverageLimitsHandler)
+	mux.HandleFunc("/insurance-companies", handlers.InsuranceCompaniesHandler)
+	mux.HandleFunc("/insurance-products", handlers.InsuranceProductsHandler)
+	mux.HandleFunc("/coverage-list", handlers.CoverageListHandler)
+	mux.HandleFunc("/coverage-limits", handlers.CoverageLimitsHandler)
+	mux.HandleFunc("/sub-coverage-limits", handlers.SubCoverageLimitsHandler)
 
 	// Legacy handlers
-	http.HandleFunc("/insurance-providers", handlers.InsuranceProvidersHandler)
-	http.HandleFunc("/service-subcategories", handlers.ServiceSubcategoriesHandler)
+	mux.HandleFunc("/insurance-providers", handlers.InsuranceProvidersHandler)
+	mux.HandleFunc("/service-subcategories", handlers.ServiceSubcategoriesHandler)
 
 	// Legacy RAG chat handler (now with session support)
-	http.HandleFunc("/api/chat", handlers.NewRAGHandler(ragClient, sessionStore))
+	mux.HandleFunc("/api/chat", handlers.NewRAGHandler(ragClient, sessionStore))
 
 	// New chat session endpoints
-	http.HandleFunc("/api/chat/session", handlers.NewChatSessionHandler(sessionStore))
-	http.HandleFunc("/api/chat/session/", handlers.NewChatSelectProviderHandler(sessionStore)) // matches /api/chat/session/{id}/provider
-	http.HandleFunc("/api/chat/providers", handlers.NewChatProvidersHandler(ragClient))
-	http.HandleFunc("/api/chat/ask", handlers.NewChatAskHandler(sessionStore, ragClient))
+	mux.HandleFunc("/api/chat/session", handlers.NewChatSessionHandler(sessionStore))
+	mux.HandleFunc("/api/chat/session/", handlers.NewChatSelectProviderHandler(sessionStore)) // matches /api/chat/session/{id}/provider
+	mux.HandleFunc("/api/chat/providers", handlers.NewChatProvidersHandler(ragClient))
+	mux.HandleFunc("/api/chat/ask", handlers.NewChatAskHandler(sessionStore, ragClient))
 
 	// Vets handler
 	placesClient := places.NewClient(cfg.MapsAPIKey)
-	http.HandleFunc("/api/vets", handlers.NewVetsHandler(placesClient))
+	mux.HandleFunc("/api/vets", handlers.NewVetsHandler(placesClient))
+
+	// Mount Gin engine onto standard mux
+	// We handle both /api/v1 and /api/v1/ to be safe
+	v1Handler := http.StripPrefix("/api/v1", insuranceV1Router)
+	mux.Handle("/api/v1", v1Handler)
+	mux.Handle("/api/v1/", v1Handler)
 
 	fmt.Printf("PetWell Backend running at http://localhost:%s\n", port)
 	fmt.Println("Chat endpoints:")
@@ -59,7 +90,8 @@ func main() {
 	fmt.Println("  POST /api/chat/session/{id}/provider - Select provider")
 	fmt.Println("  GET  /api/chat/providers         - List providers")
 	fmt.Println("  POST /api/chat/ask               - Ask with context")
-	err := http.ListenAndServe(":"+port, nil)
+
+	err = http.ListenAndServe(":"+port, mux)
 	if err != nil {
 		fmt.Printf("Server failed to start: %v\n", err)
 	}

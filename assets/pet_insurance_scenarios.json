@@ -1,0 +1,291 @@
+{
+    "scenarios": [
+        {
+            "id": "case_001",
+            "title": "一般小病 (如：严重耳道发炎)",
+            "description": "看兽医门诊，做耳镜检查，拿消炎药。",
+            "total_cost_hkd": 1500,
+            "cost_breakdown": {
+                "consultation": 500,
+                "medication": 500,
+                "treatment": 500
+            },
+            "payouts": [
+                {
+                    "insurer_id": "onedegree",
+                    "insurer_name": "OneDegree",
+                    "plan_name": "Prestige (尊寵計劃)",
+                    "estimated_payout_hkd": 1350,
+                    "coverage_percentage": 90,
+                    "analysis": "赔偿最高。按90%赔付，无细项上限，几乎全包 (网络医生)。",
+                    "is_recommended": true
+                },
+                {
+                    "insurer_id": "bluecross",
+                    "insurer_name": "Blue Cross (蓝十字)",
+                    "plan_name": "Plan A",
+                    "estimated_payout_hkd": 1050,
+                    "coverage_percentage": 70,
+                    "analysis": "按70%赔付 (30%自付)，无细项上限限制，赔付合理。",
+                    "is_recommended": false
+                },
+                {
+                    "insurer_id": "prudential",
+                    "insurer_name": "Prudential (保誠)",
+                    "plan_name": "Plan B",
+                    "estimated_payout_hkd": 850,
+                    "coverage_percentage": 56.7,
+                    "analysis": "受细项限制。诊金连药物每次上限仅 $500 (实际花费$1,000)，亏损$500。治疗费按70%赔。",
+                    "is_recommended": false
+                },
+                {
+                    "insurer_id": "bolttech",
+                    "insurer_name": "Bolttech",
+                    "plan_name": "Plan 3",
+                    "estimated_payout_hkd": 600,
+                    "coverage_percentage": 40,
+                    "analysis": "赔偿最低。诊金上限 $250，药物上限 $250。自掏腰包大部分费用。",
+                    "is_recommended": false
+                },
+                {
+                    "insurer_id": "happytails",
+                    "insurer_name": "HappyTails",
+                    "plan_name": "Ultimate Dog",
+                    "estimated_payout_hkd": 0,
+                    "coverage_percentage": 0,
+                    "analysis": "完全不赔。一般疾病门诊非手术，不在保障范围内。",
+                    "is_recommended": false
+                }
+            ]
+        },
+        {
+            "id": "case_002",
+            "title": "重大意外手术 (如：骨折/韧带断裂)",
+            "description": "需要X光、麻醉、手术、住院3天。",
+            "total_cost_hkd": 45000,
+            "cost_breakdown": {
+                "surgery_fee": 25000,
+                "anesthetist": 6000,
+                "operating_theatre": 4000,
+                "hospitalization": 3000,
+                "xray_lab": 5000,
+                "misc": 2000
+            },
+            "payouts": [
+                {
+                    "insurer_id": "onedegree",
+                    "insurer_name": "OneDegree",
+                    "plan_name": "Prestige (尊寵計劃)",
+                    "estimated_payout_hkd": 40500,
+                    "coverage_percentage": 90,
+                    "analysis": "赔偿最高。全单90%赔付，只要不超过年度10万保额，手术费全包。",
+                    "is_recommended": true
+                },
+                {
+                    "insurer_id": "happytails",
+                    "insurer_name": "HappyTails",
+                    "plan_name": "Ultimate Dog",
+                    "estimated_payout_hkd": 36000,
+                    "coverage_percentage": 80,
+                    "analysis": "表现亮眼。手术相关费用全包，赔付80% (4岁前投保)。",
+                    "is_recommended": true
+                },
+                {
+                    "insurer_id": "bluecross",
+                    "insurer_name": "Blue Cross (蓝十字)",
+                    "plan_name": "Plan A",
+                    "estimated_payout_hkd": 31500,
+                    "coverage_percentage": 70,
+                    "analysis": "按70%赔付。Plan A 主要是总额限制，若无特别手术分项限制，赔付相当可观。",
+                    "is_recommended": false
+                },
+                {
+                    "insurer_id": "prudential",
+                    "insurer_name": "Prudential (保誠)",
+                    "plan_name": "Plan B",
+                    "estimated_payout_hkd": 26000,
+                    "coverage_percentage": 57.8,
+                    "analysis": "受限于手术分项。手术费上限仅 $16,000 (实际$25k)，麻醉师上限 $5,000 (实际$6k)。",
+                    "is_recommended": false
+                },
+                {
+                    "insurer_id": "bolttech",
+                    "insurer_name": "Bolttech",
+                    "plan_name": "Plan 3",
+                    "estimated_payout_hkd": 25000,
+                    "coverage_percentage": 55.6,
+                    "analysis": "手术及杂项总限额为$30,000，住房费仅赔 $250/日 (极低)，且受20%自负额影响。",
+                    "is_recommended": false
+                }
+            ]
+        },
+        {
+            "id": "case_003",
+            "title": "慢性病治疗 (如：癌症化疗)",
+            "description": "确诊癌症，需要进行化疗疗程。",
+            "total_cost_hkd": 30000,
+            "cost_breakdown": {
+                "chemotherapy": 30000
+            },
+            "payouts": [
+                {
+                    "insurer_id": "onedegree",
+                    "insurer_name": "OneDegree",
+                    "plan_name": "Prestige (尊寵計劃)",
+                    "estimated_payout_hkd": 37000,
+                    "coverage_percentage": 123.3,
+                    "analysis": "优势明显。90%医疗赔付 ($27,000) + 一次性HK$10,000 癌症现金赔偿。",
+                    "is_recommended": true
+                },
+                {
+                    "insurer_id": "bluecross",
+                    "insurer_name": "Blue Cross (蓝十字)",
+                    "plan_name": "Plan A",
+                    "estimated_payout_hkd": 21000,
+                    "coverage_percentage": 70,
+                    "analysis": "包含在年度6万保额内，70%赔付，无特别分项限制。",
+                    "is_recommended": false
+                },
+                {
+                    "insurer_id": "prudential",
+                    "insurer_name": "Prudential (保誠)",
+                    "plan_name": "Plan B",
+                    "estimated_payout_hkd": 20000,
+                    "coverage_percentage": 66.7,
+                    "analysis": "有额外化疗保障，但对于长期高昂的癌症治疗可能杯水车薪。",
+                    "is_recommended": false
+                },
+                {
+                    "insurer_id": "bolttech",
+                    "insurer_name": "Bolttech",
+                    "plan_name": "Plan 3",
+                    "estimated_payout_hkd": 18000,
+                    "coverage_percentage": 60,
+                    "analysis": "包含在'临床及手术'的$30,000限额内。如果同年做了手术又做化疗，保额很快会耗尽。",
+                    "is_recommended": false
+                },
+                {
+                    "insurer_id": "happytails",
+                    "insurer_name": "HappyTails",
+                    "plan_name": "Ultimate Dog",
+                    "estimated_payout_hkd": 11000,
+                    "coverage_percentage": 36.7,
+                    "analysis": "化疗独立额度 $13,750，赔80%=$11,000。赔付金额最低，不适合长期癌症治疗。",
+                    "is_recommended": false
+                }
+            ]
+        },
+        {
+            "id": "case_004",
+            "title": "第三者责任 (如：狗狗咬伤路人)",
+            "description": "狗狗在散步时咬伤邻居，邻居索偿医药费及赔偿。",
+            "total_cost_hkd": 50000,
+            "cost_breakdown": {
+                "third_party_liability": 50000
+            },
+            "payouts": [
+                {
+                    "insurer_id": "prudential",
+                    "insurer_name": "Prudential (保誠)",
+                    "plan_name": "Plan B",
+                    "estimated_payout_hkd": 47000,
+                    "coverage_percentage": 94,
+                    "analysis": "保障最高。提供高达 HK$3,000,000 的第三者责任保障，自负额$3,000。",
+                    "is_recommended": true
+                },
+                {
+                    "insurer_id": "bluecross",
+                    "insurer_name": "Blue Cross (蓝十字)",
+                    "plan_name": "Plan A",
+                    "estimated_payout_hkd": 47000,
+                    "coverage_percentage": 94,
+                    "analysis": "保障额 HK$1,000,000，自负额$3,000。足够应付一般情况。",
+                    "is_recommended": false
+                },
+                {
+                    "insurer_id": "bolttech",
+                    "insurer_name": "Bolttech",
+                    "plan_name": "Plan 3",
+                    "estimated_payout_hkd": 47000,
+                    "coverage_percentage": 94,
+                    "analysis": "保障额 HK$1,000,000，自负额$3,000。",
+                    "is_recommended": false
+                },
+                {
+                    "insurer_id": "happytails",
+                    "insurer_name": "HappyTails",
+                    "plan_name": "Ultimate Dog",
+                    "estimated_payout_hkd": 40000,
+                    "coverage_percentage": 80,
+                    "analysis": "保障额 HK$2,750,000，但有自付比例 (视年龄而定)。",
+                    "is_recommended": false
+                },
+                {
+                    "insurer_id": "onedegree",
+                    "insurer_name": "OneDegree",
+                    "plan_name": "Prestige (尊寵計劃)",
+                    "estimated_payout_hkd": 0,
+                    "coverage_percentage": 0,
+                    "analysis": "需注意。通常需另加购或不包第三者责任。",
+                    "is_recommended": false
+                }
+            ]
+        },
+        {
+            "id": "case_005",
+            "title": "遗传性疾病手术 (如：髌骨脱臼)",
+            "description": "纯种犬猫常见的遗传病，需进行手术治疗。",
+            "total_cost_hkd": 20000,
+            "cost_breakdown": {
+                "surgery_fee": 20000
+            },
+            "payouts": [
+                {
+                    "insurer_id": "happytails",
+                    "insurer_name": "HappyTails",
+                    "plan_name": "Ultimate Dog",
+                    "estimated_payout_hkd": 16000,
+                    "coverage_percentage": 80,
+                    "analysis": "唯一保障。唯一承保遗传/先天性疾病 (等候12个月)，赔80%。",
+                    "is_recommended": true
+                },
+                {
+                    "insurer_id": "onedegree",
+                    "insurer_name": "OneDegree",
+                    "plan_name": "Prestige (尊寵計劃)",
+                    "estimated_payout_hkd": 0,
+                    "coverage_percentage": 0,
+                    "analysis": "不保事项。遗传性疾病通常属不保事项。",
+                    "is_recommended": false
+                },
+                {
+                    "insurer_id": "bluecross",
+                    "insurer_name": "Blue Cross (蓝十字)",
+                    "plan_name": "Plan A",
+                    "estimated_payout_hkd": 0,
+                    "coverage_percentage": 0,
+                    "analysis": "不保事项。遗传性疾病属不保事项。",
+                    "is_recommended": false
+                },
+                {
+                    "insurer_id": "prudential",
+                    "insurer_name": "Prudential (保誠)",
+                    "plan_name": "Plan B",
+                    "estimated_payout_hkd": 0,
+                    "coverage_percentage": 0,
+                    "analysis": "不保事项。遗传性疾病属不保事项。",
+                    "is_recommended": false
+                },
+                {
+                    "insurer_id": "bolttech",
+                    "insurer_name": "Bolttech",
+                    "plan_name": "Plan 3",
+                    "estimated_payout_hkd": 0,
+                    "coverage_percentage": 0,
+                    "analysis": "不保事项。遗传性疾病属不保事项。",
+                    "is_recommended": false
+                }
+            ]
+        }
+    ]
+}
